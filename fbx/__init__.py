@@ -375,7 +375,7 @@ def write_bookmarks_html(html_file: Path, bmks: list[Bookmark], cp_dir: Path):
     bmks.sort(key=lambda item: item.parent_path.lower())
     bmks.sort(key=lambda item: item.host_name.lower())
 
-    with html_file.open("w") as f:
+    with html_file.open("w", encoding="utf-8") as f:
         f.write(html_head("Bookmarks"))
 
         last_host = ""
@@ -391,7 +391,7 @@ def write_bookmarks_html(html_file: Path, bmks: list[Bookmark], cp_dir: Path):
                 )
                 last_host = bmk.host_name
 
-            title = limited(ascii(bmk.title))
+            title = bmk.title.strip()
             s = dedent(
                 """
                     <li>
