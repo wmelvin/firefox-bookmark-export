@@ -15,9 +15,7 @@
 # Remove dist and egg-info
 @clean:
   -rm dist/*
-  -rmdir dist
   -rm fbx.egg-info/*
-  -rmdir fbx.egg-info
 
 # Run ruff format
 @format:

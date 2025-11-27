@@ -11,10 +11,11 @@ from datetime import datetime
 from pathlib import Path
 from textwrap import dedent, indent
 from typing import NamedTuple
+from urllib.parse import urlparse
 
 app_name = "fbx.py"
 
-__version__ = "2025.05.1"
+__version__ = "2025.11.2"
 
 app_title = f"{app_name} (v{__version__})"
 
@@ -349,7 +350,9 @@ def html_tail():
     ).format(run_dt.strftime("%Y-%m-%d %H:%M"), app_title)
 
 
-def limited(value):
+def limit180(value: str) -> str:
+    """Limit the string length to 180 chars. If longer, the last three chars are an
+    ellipsis."""
     length_limit = 180
     s = str(value)
     if len(s) <= length_limit:
@@ -391,7 +394,7 @@ def write_bookmarks_html(html_file: Path, bmks: list[Bookmark], cp_dir: Path):
                 )
                 last_host = bmk.host_name
 
-            title = limited(ascii(bmk.title))
+            title = limit180(bmk.title)
             s = dedent(
                 """
                     <li>
@@ -445,7 +448,7 @@ def write_bookmarks_by_date_html(
             if n_hosts > 1:
                 host_str = f"&nbsp;&nbsp;&nbsp;({bmk.host_name})"
 
-            title = limited(ascii(bmk.title))
+            title = limit180(bmk.title)
             s = dedent(
                 """
                     <li>
@@ -489,7 +492,7 @@ def write_bookmarks_markdown(md_file: Path, bmks: list[Bookmark], cp_dir: Path):
                 f.write(f"On host **{bmk.host_name}** as of **{bmk.asof_dt}**\n\n")
                 last_host = bmk.host_name
 
-            title = limited(ascii(bmk.title)).strip("'")
+            title = limit180(bmk.title)
 
             f.write(
                 f"[{htm_txt(title)}]({htm_url(bmk.url)})\n"
@@ -532,7 +535,7 @@ def write_bookmarks_markdown_by_date(
             if n_hosts > 1:
                 host_str = f"Host: `{bmk.host_name}`\n"
 
-            title = limited(ascii(bmk.title)).strip("'")
+            title = limit180(bmk.title)
 
             f.write(
                 f"[{htm_txt(title)}]({htm_url(bmk.url)})\n"
@@ -640,11 +643,13 @@ def get_bookmarks(con: sqlite3.Connection, host_name: str, asof: str) -> list[Bo
             print(f"SKIP NON-HTTP URL: '{url}'")
             continue
 
-        title = str(row[0])
-        parent_id = int(row[2])
+        urlp = urlparse(url)
 
-        if title is None:
-            title = f"({url})"
+        title = row[0]
+
+        title = f"({urlp.netloc}{urlp.path})" if title is None else str(title)
+
+        parent_id = int(row[2])
 
         when_added = from_moz_date(row[3])
 

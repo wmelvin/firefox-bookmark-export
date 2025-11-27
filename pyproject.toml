@@ -7,7 +7,7 @@ name = "fbx"
 dynamic = ["version"]
 description = 'Command-line utility to export Firefox bookmarks.'
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 keywords = [ "firefox", "bookmark", "export"]
 
