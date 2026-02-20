@@ -310,6 +310,28 @@ def test_markdown_output_w_copy(setup_tmp_source_and_output, capsys):
     assert (cp_dir / "test-fbx-output-bydate.md").exists()
 
 
+def test_csv_output(setup_tmp_source_and_output, capsys):
+    src_file, out_dir = setup_tmp_source_and_output
+    out_name = "test-fbx-output.csv"
+    out_csv = out_dir / out_name
+    args = [
+        "--places-file",
+        str(src_file),
+        "--output-folder",
+        str(out_dir),
+        "--output-name",
+        out_name,
+        "--csv",
+        "--by-date",
+    ]
+    result = fbx.main(args)
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "Done." in captured.out
+    assert out_csv.exists()
+    assert (out_dir / "test-fbx-output.csv").exists()
+
+
 def test_outputs_w_rm_prev(setup_tmp_source_and_output, capsys, monkeypatch):
     def fake_get_asof_date(use_mtime: bool, places_file: Path, counter=[0]) -> datetime:  # noqa: B006
         #  The counter default argument is a mutable list that is initialized
@@ -337,15 +359,16 @@ def test_outputs_w_rm_prev(setup_tmp_source_and_output, capsys, monkeypatch):
         "--cp-dir",
         str(cp_dir),
         "--rm-prev",
+        "--csv",
     ]
     result = fbx.main(args)
     captured = capsys.readouterr()
     assert result == 0
     assert "Done." in captured.out
     out_files = [x for x in out_dir.glob("*") if x.is_file()]
-    assert len(out_files) == 4
+    assert len(out_files) == 5
     cp_files = list(cp_dir.glob("*"))
-    assert len(cp_files) == 4
+    assert len(cp_files) == 5
 
     # Run again with the same options. The '--rm-prev' option should cause
     # the previous output files to be removed.
@@ -355,9 +378,9 @@ def test_outputs_w_rm_prev(setup_tmp_source_and_output, capsys, monkeypatch):
     assert result == 0
     assert "Done." in captured.out
     out_files = [x for x in out_dir.glob("*") if x.is_file()]
-    assert len(out_files) == 4
+    assert len(out_files) == 5
     cp_files = list(cp_dir.glob("*"))
-    assert len(cp_files) == 4
+    assert len(cp_files) == 5
 
 
 def test_db_output(setup_tmp_source_and_output, capsys):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import os
 import socket
 import sqlite3
@@ -13,9 +14,9 @@ from textwrap import dedent, indent
 from typing import NamedTuple
 from urllib.parse import urlparse
 
-app_name = "fbx.py"
+app_name = "fbx"
 
-__version__ = "2025.11.2"
+__version__ = "2026.02.1"
 
 app_title = f"{app_name} (v{__version__})"
 
@@ -28,6 +29,7 @@ class AppOptions(NamedTuple):
     bydate_file: Path
     md_file: Path
     md_bydate: Path
+    csv_file: Path
     out_db: Path
     in_db: Path
     host_name: str
@@ -49,7 +51,7 @@ class Bookmark(NamedTuple):
 
 def get_args(arglist=None):
     ap = argparse.ArgumentParser(
-        description="Exports Firefox bookmarks to a single HTML file."
+        prog=app_name, description="Exports Firefox bookmarks to a single HTML file."
     )
 
     ap.add_argument(
@@ -141,10 +143,10 @@ def get_args(arglist=None):
         "--from-sqlite",
         dest="source_db",
         action="store",
-        help="Name of a SQLite database, previously created by {0}, from "
+        help=f"Name of a SQLite database, previously created by {app_name}, from "
         "which to get the list of bookmarks for producing the HTML output "
         "files. This must be the full path to the file (unless it is in "
-        "the current directory)".format(app_name),
+        "the current directory)",
     )
 
     ap.add_argument(
@@ -161,6 +163,15 @@ def get_args(arglist=None):
         action="store_true",
         help="Remove previous output files in the output folder. "
         "Only applies to HTML and Markdown files.",
+    )
+
+    ap.add_argument(
+        "--csv",
+        dest="do_csv",
+        action="store_true",
+        help="Also produce a CSV file listing the bookmarks sorted by date added "
+        "(most recent first). The name of the output file will be the same as the "
+        "main output file with a '.csv' suffix.",
     )
 
     return ap.parse_args(arglist)
@@ -251,6 +262,11 @@ def get_opts(arglist=None):  # noqa: PLR0912, PLR0915
         if bydate_file:
             md_bydate = bydate_file.parent.joinpath(f"{bydate_file.stem}.md")
 
+    if args.do_csv:
+        csv_file = output_file.parent.joinpath(f"{output_file.stem}.csv")
+    else:
+        csv_file = None
+
     if args.cp_dir:
         cp_dir = Path(args.cp_dir).expanduser().resolve()
         if not cp_dir.exists():
@@ -265,6 +281,7 @@ def get_opts(arglist=None):  # noqa: PLR0912, PLR0915
         bydate_file,
         md_file,
         md_bydate,
+        csv_file,
         out_db,
         in_db,
         host_name,
@@ -313,28 +330,24 @@ def html_style():
 
 
 def html_head(title):
-    return (
-        dedent(
-            """
+    return dedent(
+        f"""
         <!DOCTYPE html>
         <html lang="en">
         <head>
-            <meta name="generator" content="{0}">
+            <meta name="generator" content="{app_name}">
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-            <title>{1}</title>
+            <title>{title}</title>
             <style>
-        {2}
+        {html_style()}
             </style>
             <base target="_blank">
         </head>
         <body>
-        <h1>{1}</h1>
+        <h1>{title}</h1>
         <ul>
         """
-        )
-        .format(app_name, title, html_style())
-        .strip("\n")
-    )
+    ).strip("\n")
 
 
 def html_tail():
@@ -418,6 +431,24 @@ def write_bookmarks_html(html_file: Path, bmks: list[Bookmark], cp_dir: Path):
         cp_file = cp_dir / html_file.name
         print(f"Copying to '{cp_file}'")
         cp_file.write_text(html_file.read_text())
+
+
+def write_bookmarks_csv(csv_file: Path, bmks: list[Bookmark], cp_dir: Path):
+    print(f"Writing '{csv_file}'")
+
+    sorted_bmks = sorted(bmks, key=lambda item: item.when_added, reverse=True)
+
+    with csv_file.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Title", "URL", "Folder", "Added"])
+        for bmk in sorted_bmks:
+            writer.writerow(
+                [limit180(bmk.title), bmk.url, bmk.parent_path, bmk.when_added]
+            )
+    if cp_dir:
+        cp_file = cp_dir / csv_file.name
+        print(f"Copying to '{cp_file}'")
+        cp_file.write_text(csv_file.read_text())
 
 
 def write_bookmarks_by_date_html(
@@ -866,7 +897,7 @@ def remove_previous_files(from_path: Path, base_name: str) -> None:
         f.unlink()
 
 
-def main(arglist=None):
+def main(arglist=None):  # noqa: PLR0912
     print(f"\n{app_title}\n")
 
     opts = get_opts(arglist)
@@ -890,6 +921,9 @@ def main(arglist=None):
 
         if opts.md_bydate:
             write_bookmarks_markdown_by_date(str(opts.md_bydate), n_hosts, bookmarks)
+
+        if opts.csv_file:
+            write_bookmarks_csv(opts.csv_file, bookmarks, opts.cp_dir)
     else:
         print(f"Reading {opts.places_file}")
         con = sqlite3.connect(str(opts.places_file), timeout=1.0)
@@ -927,6 +961,9 @@ def main(arglist=None):
                 write_bookmarks_markdown_by_date(
                     opts.md_bydate, 1, bookmarks, opts.cp_dir
                 )
+
+            if opts.csv_file:
+                write_bookmarks_csv(opts.csv_file, bookmarks, opts.cp_dir)
 
     if ok:
         print("\nDone.\n")

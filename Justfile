@@ -21,6 +21,11 @@
 @format:
   uv run ruff format
 
+# Redirect 'fbx -h' to temp.txt
+@help:
+  uv run fbx -h > temp.txt
+
+
 # Run ruff check
 @lint:
   uv run ruff check
