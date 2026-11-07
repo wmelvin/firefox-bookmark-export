@@ -16,7 +16,8 @@ from urllib.parse import urlparse
 
 app_name = "fbx"
 
-__version__ = "2026.02.1"
+#  Using calver (YYYY.0M.MICRO).
+__version__ = "2026.11.1"
 
 app_title = f"{app_name} (v{__version__})"
 
