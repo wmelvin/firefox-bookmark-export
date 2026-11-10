@@ -569,3 +569,9 @@ def test_db_output_update_by_host(setup_tmp_source_and_output, capsys):
     assert "Done." in captured.out
     n_rows = get_db_table_row_count(out_db, "bookmarks")
     assert n_rows == 7
+
+
+def test_profile_folder_without_places_db(tmp_path):
+    with pytest.raises(SystemExit) as exc_info:
+        fbx.get_opts(["--profile", str(tmp_path)])
+    assert exc_info.value.code == 1

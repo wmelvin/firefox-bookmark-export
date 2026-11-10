@@ -212,6 +212,9 @@ def get_opts(arglist=None):  # noqa: PLR0912, PLR0915
                 sys.exit(1)
 
             files = list(p.glob("**/places.sqlite"))
+            if not files:
+                sys.stderr.write(f"\nERROR: No places.sqlite found in '{p}'\n")
+                sys.exit(1)
             files.sort(key=lambda x: x.stat().st_mtime)
             places_file = files[-1]
 
